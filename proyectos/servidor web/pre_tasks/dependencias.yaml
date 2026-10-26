@@ -1,0 +1,40 @@
+# Dependencias del playbook
+#
+# El role instalacion_paquetes NO vive en este repositorio: viene dentro del
+# entorno de ejecución (ver execution-environment.yml y requirements.yml).
+#
+# Los valores ausentes se pasan como '' y no con default(omit): omit solo vale
+# en los parámetros de un módulo. En vars de un include_role llega al role
+# como un texto raro (__omit_place_holder__...) que parece una versión.
+
+- name:                                   Asegurar que las dependencias del playbook están instalado en el host
+  ansible.builtin.include_role:
+    name:                                 instalacion_paquetes
+    apply:
+      tags:
+        - always
+  # noqa: var-naming[no-role-prefix]
+  # El role se diseñó con estos nombres (paquete, version...) y son su interfaz
+  # pública: ver su README. El prefijo lo pide ansible-lint para las variables
+  # internas de un role, y las suyas sí lo llevan.
+  vars:
+    paquete:                              "{{ paquete_actual.key }}"
+    version:                              >-
+                                          {{ paquete_actual.value[familia_sistema_operativo].version.name
+                                             | default(paquete_actual.value.version.name) | default('') }}
+    operador_version:                     >-
+                                          {{ paquete_actual.value[familia_sistema_operativo].version.matching
+                                             | default(paquete_actual.value.version.matching) | default('=') }}
+    repositorio:                          "{{ paquete_actual.value[familia_sistema_operativo].repo.url | default('') }}"
+    clave:                                "{{ paquete_actual.value[familia_sistema_operativo].repo.key | default('') }}"
+    suite:                                "{{ paquete_actual.value[familia_sistema_operativo].repo.suite | default('') }}"
+    componentes:                          "{{ paquete_actual.value[familia_sistema_operativo].repo.componentes | default(['main']) }}"
+  loop:                                   "{{ dependencias | dict2items }}"
+  # Eso es un filtro jinja..
+  loop_control:
+    loop_var:                             paquete_actual
+    label:                                "{{ paquete_actual.key }}"
+  tags:
+          - always
+# Pero... para instalar nginx, cúantas veces ejecutaba "instalacion_paquete/main.yaml"? 1
+# Y para las dependencias? 1 para cada paquete que necesite instalar.

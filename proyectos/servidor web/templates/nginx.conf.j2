@@ -1,0 +1,17 @@
+# {{ ansible_managed }}
+# Sitio {{ nombre_sitio }}. Lo escribe el playbook "servidor web": un cambio a
+# mano aquí se pierde en la siguiente ejecución.
+server {
+    listen {{ puerto }};
+    server_name {{ fqdn }};
+    root {{ ruta_web }};
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    access_log /var/log/nginx/{{ nombre_sitio }}.access.log;
+    error_log /var/log/nginx/{{ nombre_sitio }}.error.log;
+
+    {{ otros_parametros | indent(4) }}
+}

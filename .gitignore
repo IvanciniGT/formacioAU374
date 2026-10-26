@@ -1,0 +1,8 @@
+.ansible/
+ansible-navigator.log
+*.retry
+.DS_Store
+*-artifact-*.json
+
+# Lo que genera ansible-builder sin --context: se regenera, no se versiona
+context/

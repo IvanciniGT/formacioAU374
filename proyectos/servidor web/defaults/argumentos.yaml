@@ -1,0 +1,87 @@
+# Valores por defecto de los argumentos del playbook.
+#
+# Quien ejecuta el playbook nos pasa `nginx` y `web` (inventario, extra vars,
+# AWX...) y lo que nos pase se mezcla ENCIMA de esto: solo tiene que darnos lo
+# que quiera cambiar. Ver pre_tasks/preparar-informacion.yaml.
+#
+# Tiene que ser UN SOLO documento YAML: include_vars no acepta ficheros con
+# varios `---`. Los ejemplos de abajo van comentados por eso.
+
+nginx:              {}             # El de los repos oficiales de la distro, la última versión
+
+web:
+  nombre:               miweb      # Nombre del sitio: fichero de configuración, logs y backups
+  puerto:               80
+  nombre_servidor:      "{{ ansible_host }}"  # server_name de nginx (fqdn)
+  carpeta_web:          /var/www/miweb
+  carpeta_descarga:     /var/tmp/despliegue-miweb   # Donde se clona el repo antes de desplegar
+  carpeta_backups:      /var/backups/web            # Donde quedan los .tar.gz de lo que había antes
+  parametros_nginx:     |-
+                            # NGINX admite otros 500 parametros de configuración:
+                            # Tamaño máximo de upload
+                            client_max_body_size 10M;
+                            # Tiempo máximo de espera para recibir el cuerpo de la solicitud
+                            client_body_timeout 10s;
+                            # Tiempo máximo de espera para recibir las cabeceras
+                            client_header_timeout 10s;
+  repo:                 ""         # OBLIGATORIO: no hay web por defecto que tenga sentido desplegar
+  rama:                 HEAD       # Rama, etiqueta o commit. HEAD: la rama por defecto del repo
+  # A qué dirección se conectan las pruebas "desde fuera". Vacío: al propio
+  # nombre_servidor, pasando por el DNS, como un usuario de verdad. Hace falta
+  # cuando ese nombre no lleva a la máquina desde donde corre Ansible: en el
+  # laboratorio del curso, el nombre de cada máquina es un Service de
+  # Kubernetes que solo publica el puerto 22, y hay que ir a la IP del pod.
+  direccion_pruebas:    ""
+  chequeos:
+    - path:             /
+      respuesta:
+        status_code:    200
+        texto:          ""         # Vacío: basta con el código de respuesta
+
+# ── Ejemplos ────────────────────────────────────────────────────────────────
+#
+# Una versión mínima para todas las distros:
+#
+# nginx:
+#     version:
+#         name:          "1.22"           # Default que puede sobreescribirse a nivel de cada distro (o no)
+#         matching:      ">="              # = (= default)
+#
+# Versión y repositorio distintos por distro:
+#
+# nginx:
+#     redhat:
+#         version:
+#             name:      "1.22"
+#             matching:  ">="
+#         repo:
+#             url:       "https://nginx.org/packages/centos/$releasever/$basearch/"
+#             key:       "https://nginx.org/keys/nginx_signing.key"
+#     debian:
+#         version:
+#             name:      "1.26*"           # En apt la versión lleva la revisión del paquete
+#             matching:  "="               # (1.26.2-1~noble): con = hace falta el comodín
+#         repo:
+#             url:       "https://nginx.org/packages/ubuntu"   # La URI del repo, no un fichero .list
+#             key:       "https://nginx.org/keys/nginx_signing.key"
+#             componentes:                 # Opcional. Por defecto [main]; nginx.org usa "nginx"
+#                        - nginx
+#             # suite:   noble             # Opcional. Por defecto la de la versión del host
+#                                          # (noble, jammy...). Hay repos que usan una fija: stable
+#
+# Para Debian en lugar de Ubuntu cambia solo la URL: https://nginx.org/packages/debian
+#
+# Una web con dos chequeos:
+#
+# web:
+#   nombre_servidor:      app1.miempresa.com
+#   repo:                 "https://git.example.com/miweb.git"
+#   chequeos:
+#     - path:             /status
+#       respuesta:
+#         status_code:    200
+#         texto:          "El sitio está funcionando ok"
+#     - path:             /performance
+#       respuesta:
+#         status_code:    200
+#         texto:          "El sitio está funcionando ok"

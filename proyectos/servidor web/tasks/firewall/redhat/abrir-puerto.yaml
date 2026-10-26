@@ -1,0 +1,27 @@
+---
+# El firewall de RedHat es firewalld. Si alguien ha montado otro a mano, no es
+# cosa de este playbook: no lo buscamos.
+- name:                   Mirar si firewalld está activo
+  # Que esté instalado no basta: con firewalld parado, abrir un puerto no hace
+  # nada, y arrancarlo no es cosa de este playbook. En el laboratorio ni
+  # siquiera está instalado, y entonces la tarea siguiente se salta sola.
+  ansible.builtin.shell:
+    cmd:                  |
+                          if ! command -v firewall-cmd >/dev/null; then
+                            echo "no instalado"
+                            exit 0
+                          fi
+                          firewall-cmd --state
+  register:               estado_firewalld
+  changed_when:           false
+  # firewall-cmd --state sale con 252 cuando está parado: no es un fallo, es
+  # la respuesta.
+  failed_when:            estado_firewalld.rc not in [0, 252]
+
+- name:                   Asegurar que el puerto de la web está abierto en firewalld
+  ansible.posix.firewalld:
+    port:                 "{{ configuracion_web.puerto }}/tcp"
+    permanent:            true
+    immediate:            true
+    state:                enabled
+  when:                   estado_firewalld.stdout == 'running'

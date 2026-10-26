@@ -1,0 +1,21 @@
+---
+# En RedHat no hay nada que mirar: tanto el nginx de la distro como el de
+# nginx.org leen solo conf.d. Ni sites-enabled, ni enlace, ni otra carpeta de
+# la que limpiar.
+- name:                   Asegurar que tenemos el fichero de configuración de nginx para mi app en conf.d
+                          # Este playbook no restaurará el sistema en caso de problemas.
+                          # Si quisiera automatizar eso, CREARIA UN PLAYBOOK NUEVO PARA ELLO: Recovery Playbook
+                          # Pero si es responsabildiad de este proporcionar todo lo necesario para poder realizar ese recovery en caso de fallo.
+                          # El modulo template añade mucha funcionalidad... entre ellas la capa de backup automático del fichero anterior.
+  ansible.builtin.template:
+    src:                  nginx.conf.j2
+    dest:                 "{{ nginx_disposiciones.conf_d.fichero_sitio }}"
+    mode:                 "0644"
+    backup:               true
+  vars:
+    puerto:               "{{ configuracion_web.puerto }}"
+    fqdn:                 "{{ configuracion_web.nombre_servidor }}"
+    ruta_web:             "{{ configuracion_web.carpeta_web }}"
+    nombre_sitio:         "{{ configuracion_web.nombre }}"
+    otros_parametros:     "{{ configuracion_web.parametros_nginx }}"
+  notify:                 CONFIGURACION_NGINX_CAMBIADA

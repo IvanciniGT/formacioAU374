@@ -1,0 +1,63 @@
+---
+# En Debian/Ubuntu dónde va el sitio depende del paquete de nginx que se haya
+# instalado, y eso lo elige quien lanza el playbook (argumento nginx.repo):
+#   nginx de Debian/Ubuntu: lee conf.d Y sites-enabled. El sitio va en
+#     sites-available con un enlace en sites-enabled: así se apaga
+#     quitando el enlace.
+#   nginx de nginx.org: solo conf.d.
+# Por eso aquí no se puede dar por sabido: se mira.
+- name:                   Mirar si el nginx instalado lee sites-enabled
+  # Lo decide el nginx.conf que trae el paquete. Si pusiéramos el sitio en
+  # sites-enabled con el nginx de nginx.org, nginx arrancaría sin él, sin
+  # error y sirviendo su página por defecto.
+  ansible.builtin.command:
+    cmd:                  grep -Eq '^[[:space:]]*include[[:space:]]+/etc/nginx/sites-enabled/' /etc/nginx/nginx.conf
+  register:               lee_sites_enabled
+  changed_when:           false
+  failed_when:            lee_sites_enabled.rc not in [0, 1]   # 1 = no lo incluye
+
+- name:                   Decidir dónde va la configuración del sitio
+  ansible.builtin.set_fact:
+    disposicion_sitio:    "{{ 'sites' if lee_sites_enabled.rc == 0 else 'conf_d' }}"
+    otra_disposicion:     "{{ 'conf_d' if lee_sites_enabled.rc == 0 else 'sites' }}"
+
+- name:                   Asegurar que tenemos el fichero de configuración de nginx para mi app en la carpeta buena
+                          # Este playbook no restaurará el sistema en caso de problemas.
+                          # Si quisiera automatizar eso, CREARIA UN PLAYBOOK NUEVO PARA ELLO: Recovery Playbook
+                          # Pero si es responsabildiad de este proporcionar todo lo necesario para poder realizar ese recovery en caso de fallo.
+                          # El modulo template añade mucha funcionalidad... entre ellas la capa de backup automático del fichero anterior.
+  ansible.builtin.template:
+    src:                  nginx.conf.j2
+    dest:                 "{{ nginx_disposiciones[disposicion_sitio].fichero_sitio }}"
+    mode:                 "0644"
+    backup:               true
+  vars:
+    puerto:               "{{ configuracion_web.puerto }}"
+    fqdn:                 "{{ configuracion_web.nombre_servidor }}"
+    ruta_web:             "{{ configuracion_web.carpeta_web }}"
+    nombre_sitio:         "{{ configuracion_web.nombre }}"
+    otros_parametros:     "{{ configuracion_web.parametros_nginx }}"
+  notify:                 CONFIGURACION_NGINX_CAMBIADA
+
+- name:                   Asegurar que el sitio está habilitado (solo con sites-enabled)
+  ansible.builtin.file:
+    src:                  "{{ nginx_disposiciones[disposicion_sitio].fichero_sitio }}"
+    dest:                 "{{ nginx_disposiciones[disposicion_sitio].enlace_sitio }}"
+    state:                link
+  when:                   nginx_disposiciones[disposicion_sitio].enlace_sitio | length > 0
+  notify:                 CONFIGURACION_NGINX_CAMBIADA
+
+- name:                   Asegurar que el sitio no está también en la otra carpeta
+  # Si se cambia de nginx (el de Ubuntu por el de nginx.org, o al revés), el
+  # sitio se queda escrito en la carpeta de antes. Con el nginx de Ubuntu,
+  # que lee las dos, saldría dos veces: «conflicting server name».
+  ansible.builtin.file:
+    path:                 "{{ fichero }}"
+    state:                absent
+  loop:
+                        - "{{ nginx_disposiciones[otra_disposicion].enlace_sitio }}"
+                        - "{{ nginx_disposiciones[otra_disposicion].fichero_sitio }}"
+  loop_control:
+    loop_var:             fichero
+  when:                   fichero | length > 0
+  notify:                 CONFIGURACION_NGINX_CAMBIADA

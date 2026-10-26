@@ -1,0 +1,45 @@
+---
+# Entorno de ejecución del playbook "servidor web".
+#
+# El playbook no se entrega solo: se entrega con el entorno donde tiene que
+# correr. Esta imagen lleva la versión de ansible-core, las colecciones y el
+# role con los que se ha probado, y es la que usa AWX al lanzarlo.
+#
+#   ansible-builder build -f execution-environment.yml \
+#     -t registry.ivanosuna.com/curso/ee-servidor-web:1.0.0
+#   docker push registry.ivanosuna.com/curso/ee-servidor-web:1.0.0
+#
+# Si cambia algo de aquí o de requirements.yml, se sube la versión de la
+# etiqueta y se reconstruye. Nunca se pisa una etiqueta ya publicada: AWX
+# podría tenerla en caché y seguiría ejecutando la vieja sin avisar.
+version: 3
+
+dependencies:
+  # La imagen base de Fedora no trae Python: ansible-builder lo instala con
+  # dnf antes que nada. Es el Python con el que corre Ansible en el EE.
+  python_interpreter:
+    package_system:     python3
+    python_path:        /usr/bin/python3
+  ansible_core:
+    package_pip:      ansible-core==2.20.10
+  ansible_runner:
+    package_pip:      ansible-runner==2.4.3
+  system:
+    - openssh-clients    # sin esto no hay conexión a las máquinas
+    - curl               # la VARIANTE 2 de las comprobaciones previas
+    - glibc-common       # getent, para la prueba del DNS
+  galaxy:                requirements.yml
+
+images:
+  base_image:
+    name:               registry.fedoraproject.org/fedora:43
+
+additional_build_steps:
+  # pip tampoco viene con el Python de Fedora, y ansible-builder lo necesita
+  # para instalar ansible-core y ansible-runner.
+  prepend_base:
+    - RUN dnf install -y python3-pip && dnf clean all
+  # ansible-galaxy descarga el role con git, y la imagen base de Fedora no lo
+  # trae. Solo hace falta en la fase en la que se instalan colecciones y roles.
+  prepend_galaxy:
+    - RUN dnf install -y git-core && dnf clean all

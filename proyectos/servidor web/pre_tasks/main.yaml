@@ -1,0 +1,26 @@
+- name:                                   Cargar los datos necesarios para el playbook
+  ansible.builtin.include_tasks:
+    file:                                 pre_tasks/preparar-informacion.yaml
+    apply:
+      tags:
+        - always
+  tags:
+    - always
+
+- name:                                   Ejecutar las comprobaciones previas antes de continuar con el playbook
+  ansible.builtin.include_tasks:
+    file:                                 pre_tasks/comprobaciones.yaml
+    apply:
+      tags:
+        - always
+  tags:
+    - always
+
+- name:                                   Asegurar que las dependencias están instaladas
+  ansible.builtin.include_tasks:
+    file:                                 pre_tasks/dependencias.yaml
+    apply:
+      tags:
+        - always
+  tags:
+    - always

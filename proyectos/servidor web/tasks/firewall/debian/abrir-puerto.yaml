@@ -1,0 +1,23 @@
+---
+# El firewall de Debian/Ubuntu es ufw. Si alguien ha montado otro a mano, no es
+# cosa de este playbook: no lo buscamos.
+- name:                   Mirar si ufw está activo
+  # Que esté instalado no basta: con ufw parado, abrir un puerto no hace nada,
+  # y arrancarlo no es cosa de este playbook. En el laboratorio ni siquiera
+  # está instalado, y entonces la tarea siguiente se salta sola.
+  ansible.builtin.shell:
+    cmd:                  |
+                          if ! command -v ufw >/dev/null; then
+                            echo "no instalado"
+                            exit 0
+                          fi
+                          ufw status
+  register:               estado_ufw
+  changed_when:           false
+
+- name:                   Asegurar que el puerto de la web está abierto en ufw
+  community.general.ufw:
+    rule:                 allow
+    port:                 "{{ configuracion_web.puerto | string }}"
+    proto:                tcp
+  when:                   "'Status: active' in estado_ufw.stdout"

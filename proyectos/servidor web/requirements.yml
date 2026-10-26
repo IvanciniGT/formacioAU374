@@ -1,0 +1,19 @@
+---
+# Lo que el playbook necesita y no trae ansible-core. Se instala DENTRO de la
+# imagen del entorno de ejecución (execution-environment.yml), no en el
+# portátil ni en AWX: así es igual en todos los sitios donde se ejecute.
+#
+# Todo con versión fija. Una colección o un role «a la última» hace que la
+# misma imagen, construida dos días distintos, no sea la misma.
+collections:
+  - name:             ansible.posix          # synchronize, firewalld
+    version:          "2.2.2"
+  - name:             community.general      # archive, ufw
+    version:          "13.5.0"
+
+roles:
+  # El role vive en su propio repositorio. Se fija por etiqueta, no por rama:
+  # una rama se mueve y la imagen dejaría de ser reproducible.
+  - name:             instalacion_paquetes
+    src:              git+https://github.com/IvanciniGT/ansible-role-instalacion_paquetes.git
+    version:          "v1.2.0"

@@ -1,0 +1,254 @@
+# Cuatro bloques, uno por cada naturaleza de trabajo. La etiqueta y el become
+# se ponen una vez en el bloque y los heredan todas sus tareas: así no hay una
+# tarea suelta que se quede sin etiqueta y no se ejecute con --tags.
+
+# ── INSTALACIÓN ─────────────────────────────────────────────────────────────
+- name:                   Instalación de nginx
+  tags:
+          - instalacion
+  block:
+    - name:               Asegurar que NGINX queda instalado en el host en la versión que me interesa
+      ansible.builtin.include_role:
+        name:             instalacion_paquetes
+              # La tarea de instalación necesita:
+              # - paquete
+              # - version (opcional)
+              # - operador_version (opcional)
+              # - repositorio (opcional)
+              # - clave (opcional)
+              # - suite y componentes (opcionales, solo Debian/Ubuntu)
+              # Nuestras variables NO SE LLAMAN ASI.
+              # Lo que podemos hacer es definir ESAS VARIABLES SOLO PARA ESTA TAREA
+        apply:
+          tags:
+              - instalacion
+      # noqa: var-naming[no-role-prefix]
+      # El role se diseñó con estos nombres (paquete, version...) y son su interfaz
+      # pública: ver su README. El prefijo lo pide ansible-lint para las variables
+      # internas de un role, y las suyas sí lo llevan.
+      vars:
+        paquete:          nginx
+        version:          "{{ configuracion_nginx[familia_sistema_operativo].version.name | default(configuracion_nginx.version.name) | default('') }}"
+        operador_version: "{{ configuracion_nginx[familia_sistema_operativo].version.matching | default(configuracion_nginx.version.matching) | default('=') }}"
+        repositorio:      "{{ configuracion_nginx[familia_sistema_operativo].repo.url | default('') }}"
+        clave:            "{{ configuracion_nginx[familia_sistema_operativo].repo.key | default('') }}"
+        suite:            "{{ configuracion_nginx[familia_sistema_operativo].repo.suite | default('') }}"
+        componentes:      "{{ configuracion_nginx[familia_sistema_operativo].repo.componentes | default(['main']) }}"
+  rescue: # Los rescue se pueden poner en los bloques y sirven para manejar errores de manera controlada dentro del bloque.
+  # Damos tareas que de seben ejecutar caso que en el bloque se haya producido un error.
+    - name:               Manejar error en la instalación de nginx
+      # Un rescue que solo avisa SE TRAGA EL ERROR: Ansible da el fallo por
+      # recogido (rescued), sigue con el resto del playbook sin nginx y el
+      # trabajo termina en verde. Por eso acaba fallando él, con el mensaje del
+      # error original, que está en ansible_failed_result.
+      ansible.builtin.fail:
+        msg:              "Hubo un error al instalar nginx: {{ ansible_failed_result.msg | default('sin mensaje') }}"
+  always: # Las tareas en always se ejecutan siempre, haya habido error o no en el bloque.
+    - name:               Mensaje siempre después de intentar instalar nginx
+      ansible.builtin.debug:
+        msg:              "Se intentó instalar nginx"
+  # Se puede utilizar además a nivel de bloque:
+  # when: se puede usar para condicionar la ejecución del bloque completo.
+  # become: se puede usar para elevar privilegios en todo el bloque.
+
+# ── CONFIGURACIÓN ───────────────────────────────────────────────────────────
+- name:                   Configuración de nginx para la web
+  become:                 true
+  tags:
+          - configuracion
+  block:
+    - name:               Asegurar que el sitio está configurado en nginx
+      # Cada distro deja el sitio donde lo lee su nginx: ver tasks/configuracion/.
+      # El become y la etiqueta del bloque se quedan en el include: a las
+      # tareas de dentro solo les llegan por el apply.
+      ansible.builtin.include_tasks:
+        file:             "tasks/configuracion/{{ familia_sistema_operativo }}/sitio.yaml"
+        apply:
+          become:         true
+          tags:
+              - configuracion
+
+    - name:               Comprobar que la configuración de nginx es válida
+      # Antes de recargar nada. Un error en parametros_nginx (los nos pasan tal
+      # cual) haría que el reload fallase, y el nginx viejo seguiría sirviendo sin
+      # que nadie se enterase de que la configuración nueva no ha entrado.
+      # El backup del template deja el fichero anterior al lado para volver atrás.
+      ansible.builtin.command:
+        cmd:              nginx -t
+      changed_when:       false
+
+    - name:               Asegurar que el puerto de la web está abierto en el firewall, si hay uno activo
+      # Cada distro tiene su firewall, y cada fichero mira solo el suyo.
+      ansible.builtin.include_tasks:
+        file:             "tasks/firewall/{{ familia_sistema_operativo }}/abrir-puerto.yaml"
+        apply:
+          become:         true
+          tags:
+              - configuracion
+
+# ── DESPLIEGUE DE LA WEB ────────────────────────────────────────────────────
+- name:                   Despliegue de la web
+  become:                 true
+  tags:
+          - despliegue
+  block:
+    - name:               Asegurar que tenemos la última versión del repositorio de git descargada en local
+                          # Otra cosa será lo que haya desplegado en el nginx (la web)... de esa tendremos que hacer nosotros un backup manual...
+                          # Pero no siempre. Solo cuando lo ultimo que descargue sea diferente de lo que ya estaba desplegado.
+      ansible.builtin.git:
+        repo:             "{{ configuracion_web.repo }}"
+        dest:             "{{ configuracion_web.carpeta_descarga }}"
+        version:          "{{ configuracion_web.rama }}"
+        depth:            1
+        force:            true      # Si alguien ha tocado la copia descargada, se descarta
+      # Descargar NO es un cambio en la máquina que nos interese: lo que nos
+      # interesa es si cambia lo DESPLEGADO, y eso lo dice la sincronización.
+      changed_when:       false
+
+    - name:               Asegurar que existe la carpeta real de despliegue de la app
+      ansible.builtin.file:
+        path:             "{{ configuracion_web.carpeta_web }}"
+        state:            directory
+        mode:             "0755"
+
+    - name:               Mirar si hay diferencias entre lo descargado y lo que ya está desplegado
+      # rsync en modo --dry-run: check_mode hace que synchronize no copie nada.
+      # Con delegate_to al propio host, rsync corre DENTRO de la máquina remota y
+      # copia de una carpeta suya a otra suya; si no, intentaría copiar desde la
+      # máquina donde corre Ansible.
+      ansible.posix.synchronize:
+        src:              "{{ configuracion_web.carpeta_descarga }}/"
+        dest:             "{{ configuracion_web.carpeta_web }}/"
+        delete:           true
+        # Por contenido y no por fecha: git pone a los ficheros la fecha en que se
+        # descargan, y una descarga nueva de lo mismo parecería otra web.
+        checksum:         true
+        times:            false
+        rsync_opts:
+                        - "--exclude=.git"   # La carpeta .git es de git, no de la web
+      delegate_to:        "{{ inventory_hostname }}"
+      check_mode:         true
+      register:           diferencias_web
+      # Lo que haya o no cambiado no es este paso, que no toca nada.
+      changed_when:       false
+
+    - name:               Decidir si hay que desplegar
+      # synchronize en check_mode no devuelve stdout: devuelve stdout_lines, una
+      # línea por fichero que cambiaría. Vacía, no hay nada distinto.
+      ansible.builtin.set_fact:
+        hay_cambios_web:  "{{ diferencias_web.stdout_lines | length > 0 }}"
+
+    - name:               Despliegue real de la web
+      when:               hay_cambios_web
+      block:
+        - name:           Mirar si ya había algo desplegado de lo que hacer backup
+          ansible.builtin.find:
+            paths:        "{{ configuracion_web.carpeta_web }}"
+            file_type:    any
+            hidden:       true
+          register:       desplegado_antes
+
+        - name:           Backup de lo que hay desplegado antes de pisarlo
+          # La primera vez no hay nada que salvar.
+          when:           desplegado_antes.matched > 0
+          block:
+            - name:       Asegurar que existe la carpeta de backups
+              ansible.builtin.file:
+                path:     "{{ configuracion_web.carpeta_backups }}"
+                state:    directory
+                mode:     "0750"
+
+            - name:       Hacer backup de lo que hay desplegado
+              community.general.archive:
+                path:     "{{ configuracion_web.carpeta_web }}/"
+                dest:     "{{ configuracion_web.carpeta_backups }}/{{ configuracion_web.nombre }}-{{ now(utc=true, fmt='%Y%m%dT%H%M%SZ') }}.tar.gz"
+                format:   gz
+                mode:     "0640"
+
+        - name:           Asegurar que lo desplegado es la última versión de la web
+          ansible.posix.synchronize:
+            src:          "{{ configuracion_web.carpeta_descarga }}/"
+            dest:         "{{ configuracion_web.carpeta_web }}/"
+            delete:       true
+            checksum:     true
+            times:        false
+            rsync_opts:
+                        - "--exclude=.git"
+          delegate_to:    "{{ inventory_hostname }}"
+          notify:         CONFIGURACION_NGINX_CAMBIADA
+
+# ── SERVICIO ────────────────────────────────────────────────────────────────
+# LO NORMAL, EN UN SERVIDOR DE VERDAD: que systemd arranque nginx ahora y en
+# cada arranque de la máquina.
+#
+# En nuestro laboratorio las máquinas son CONTENEDORES. En un contenedor el
+# proceso 1 no es systemd sino sshd, así que no hay systemctl al que pedirle
+# nada y esta tarea fallaría. Queda comentada, y la sustituyen las de abajo,
+# que hablan directamente con el proceso de nginx.
+#
+# Lo que se pierde es el arranque automático: si el contenedor se reinicia,
+# arranca desde su imagen, que solo trae sshd. Ni nginx, ni la web, ni la
+# configuración: reiniciar el pod no reinicia el servicio, reconstruye la
+# máquina. Volver a lanzar este playbook es lo que la deja como tiene que estar.
+- name:                   Servicio nginx
+  become:                 true
+  tags:
+          - instalacion
+          - configuracion
+          - despliegue
+  block:
+    # - name:               Asegurar que nginx está arrancado y arranca con el sistema
+    #   ansible.builtin.service:
+    #     name:             nginx
+    #     state:            started
+    #     enabled:          true
+
+    - name:               Asegurar que nginx está arrancado
+      # Una sola tarea, como la de systemd que sustituye: si ya corre no hace
+      # nada (ok) y si no, lo arranca (changed). nginx se pone él solo en
+      # segundo plano, así que la tarea vuelve en cuanto arranca.
+      ansible.builtin.shell:
+        cmd:              |
+                          if pgrep -x nginx >/dev/null; then
+                            echo "ya estaba arrancado"
+                          else
+                            nginx && echo "arrancado"
+                          fi
+      register:           arranque_nginx
+      changed_when:       arranque_nginx.stdout == 'arrancado'
+
+    - name:               Asegurar que corre el nginx que está instalado
+      # Al actualizar el paquete, el binario nuevo sustituye en disco al viejo,
+      # pero el proceso que ya corría sigue siendo el viejo: un reload le hace
+      # releer la configuración, no cambiar de programa. Linux lo delata en
+      # /proc: el ejecutable de ese proceso aparece como «(deleted)». Si es así,
+      # se para y se vuelve a arrancar; si no, no se toca.
+      #
+      # Se mira así, y no comparando versiones antes y después de instalar,
+      # porque también detecta un paquete que haya actualizado otro (un apt
+      # upgrade a mano, unattended-upgrades...).
+      #
+      # Parar nginx no tumba el pod: el proceso 1 es sshd, no nginx. quit y no
+      # stop: deja terminar las peticiones en curso antes de salir.
+      #
+      # Con systemd esta tarea sobra: el propio paquete reinicia el servicio al
+      # actualizarse. Aquí no hay quien lo haga.
+      ansible.builtin.shell:
+        executable:       /bin/bash
+        cmd:              |
+                          if [[ "$(readlink /proc/$(pgrep -o -x nginx)/exe)" != *"(deleted)"* ]]; then
+                            echo "es el instalado"
+                            exit 0
+                          fi
+                          nginx -s quit
+                          for i in $(seq 60); do
+                            pgrep -x nginx >/dev/null || break
+                            sleep 0.5
+                          done
+                          if pgrep -x nginx >/dev/null; then
+                            echo "nginx no se ha parado en 30 segundos" >&2
+                            exit 1
+                          fi
+                          nginx && echo "reiniciado"
+      register:           reinicio_nginx
+      changed_when:       reinicio_nginx.stdout == 'reiniciado'

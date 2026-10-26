@@ -1,0 +1,62 @@
+# Obtener datos que mi playbook necesita para trabajar
+- name:                                   Cargar las constantes que necesita mi playbook
+  ansible.builtin.include_vars:           vars/constantes.yaml
+
+- name:                                   Cargar los valores por defecto para los argumentos que suministra el usuario
+  # OJO CON LA PRECEDENCIA. Lo que carga include_vars pisa a casi todo: a las
+  # variables del inventario, de grupo y de host. Si cargásemos aquí `nginx` y
+  # `web` tal cual, los valores por defecto ganarían a los que nos pasan en el
+  # inventario, que es justo al revés de lo que significa «por defecto».
+  #
+  # Por eso se cargan debajo de un nombre propio (`name:`), sin tocar `nginx`
+  # ni `web`, y en la tarea de abajo se mezclan: primero lo de por defecto y,
+  # encima, lo que nos hayan dado.
+  ansible.builtin.include_vars:
+    file:                                 defaults/argumentos.yaml
+    name:                                 argumentos_por_defecto
+
+- name:                                   Obtener la distribución del sistema operativo que tiene el host
+                                          # (SOLO LA DISTO, no el resto de datos del host)... NO QUEREMOS EL GATHER FACTS COMPLETO
+  ansible.builtin.setup:
+    gather_subset:
+      - "!all"                            # No traigas todo
+      - "!min"                            # Ni siquiera traigas el conjunto mínimo de facts
+      - distribution                      # Solo me interesa la distribución del sistema operativo
+      - network                           # Y la IP: las pruebas pueden necesitarla cuando no hay DNS (ver chequeos)
+
+    # Esto es lo que nos ayuda a evitar el gather_facts general a nivel del playbook.
+    # Solo trae lo que necesito.
+    # Un gather facts completo puede tardar bastante tiempo, por eso solo traemos lo necesario.
+    # De hecho, el valor por defecto de gather_facts a nivel del playbook es true, lo que traería todos los facts del host.
+    # Y hay que cambiarlo!
+
+    # Este módulo, igual que el gather_facts genérico genera una "variable" llamada "ansible_facts"
+    # Esa variable es la que contiene TODOS LOS DATOS recopilados por el módulo setup, en este caso solo la distribución del sistema operativo.
+    # Para acceder a la distribución del sistema operativo, se puede usar:
+    # ansible_facts['distribution']
+    # ansible_facts.distribution
+    # En realidad , a nosotros no nos interesa la distro... nos interesa la familia!
+    # Para acceder a la familia del sistema operativo, se puede usar:
+    # ansible_facts['os_family']
+    # ansible_facts.os_family
+    # Tambén se recolecta al pedir la distribución del sistema operativo, ya que la familia se deriva de ella.
+    # Distribution -> Ubuntu, Xubuntu, Debian, CentOS, Rocky
+    # Os_family -> Debian, RedHat
+
+- name:                                     Normalizar la familia del sistema operativo
+  ansible.builtin.set_fact:                 # ME PERMITE CREAR VARIABLES! VARIABLES DE VERDAD, DE LAS QUE CAMBIAN!!!
+                                            # De las que pongo en tiempo de ejecución!
+    familia_sistema_operativo:              "{{ ansible_facts.os_family | lower }}"
+
+- name:                                     Mezclar los argumentos que nos han dado con los valores por defecto
+  # Mezcla en profundidad (recursive): si solo nos dan `web.repo`, el resto de
+  # `web` sale de los valores por defecto. Las listas, como `chequeos`, no se
+  # mezclan: la que nos den sustituye entera a la de por defecto.
+  #
+  # El resultado va a variables con otro nombre, y no a `nginx` y `web`, por
+  # las extra vars: tienen la máxima precedencia, ganan también a set_fact, y
+  # si nos pasan `web` así (que es como se hace desde AWX), cualquier lectura
+  # posterior de `web` vería lo que nos pasaron SIN los valores por defecto.
+  ansible.builtin.set_fact:
+    configuracion_nginx:                    "{{ argumentos_por_defecto.nginx | combine(nginx | default({}), recursive=true) }}"
+    configuracion_web:                      "{{ argumentos_por_defecto.web | combine(web | default({}), recursive=true) }}"

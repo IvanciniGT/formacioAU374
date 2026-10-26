@@ -1,0 +1,115 @@
+# Pruebas. Ninguna cambia nada: todas llevan changed_when: false o usan
+# módulos que solo miran. Van de dentro hacia fuera a propósito: si falla la
+# del DNS pero pasan las del puerto, ya sabemos que nginx está bien y que el
+# problema está en otra parte. Para eso hay tantas.
+
+# - name:                   Comprobar si el proceso de nginx está corriendo
+#   ansible.builtin.service_facts:
+#   # rellena una variable llamada ansible_facts.services con los servicios del sistema
+#   # Es un listado... dentro de él tenemos cada servicio. y dentro de cada servicio la propiedad state.
+#   # Si el servicio está corriendo status será running
+#   failed_when:           ansible_facts.services['nginx'].state != 'running'
+#   tags:
+#           - prueba
+#
+# service_facts pregunta a systemd (o al init que haya), y en nuestro
+# laboratorio las máquinas son CONTENEDORES sin systemd: nginx no aparecería
+# como servicio aunque estuviera corriendo. Queda comentada, y la sustituye la
+# de abajo, que busca el proceso directamente (el ps -eaf | grep nginx de toda
+# la vida). En un servidor con systemd, la de arriba es la buena.
+- name:                   Comprobar si el proceso de nginx está corriendo
+  ansible.builtin.command:
+    cmd:                  pgrep -x nginx
+  changed_when:           false
+  tags:
+          - prueba
+
+- name:                   Comprobar si el puerto configurado está escuchando
+  ansible.builtin.wait_for: # Mira si un puerto está abierto
+    port:                 "{{ configuracion_web.puerto }}"
+    timeout:              30 # Por defecto son 300. No quiero al ansible contando ovejas si no arranca
+    state:                started
+    # host:               127.0.0.1 # Queremos ver si en la máquina el puerto está abierto
+                          # Aquí miro localhost, porque la prueba la estoy ejecutando desde el remoto
+  tags:
+          - prueba
+
+- name:                   Comprobar si llamando a la ruta configurada para chequeos desde local, funciona.
+                            # curl http://dominio:80/ruta_de_chequeo // DESDE LA PROPIA MAQUINA REMOTA
+  ansible.builtin.uri:
+    # A 127.0.0.1 y con la cabecera Host: el nombre del servidor no tiene por
+    # qué resolver DESDE DENTRO de la máquina, y lo que queremos probar aquí es
+    # que nginx sirve nuestro sitio (su server_name), no el DNS.
+    url:                  "http://127.0.0.1:{{ configuracion_web.puerto }}{{ chequeo.path }}"
+    headers:
+      Host:               "{{ configuracion_web.nombre_servidor }}"
+    method:               GET
+    return_content:       true
+    status_code:
+                        - "{{ chequeo.respuesta.status_code }}"
+  register:               respuesta_local
+  failed_when:            >-
+                          respuesta_local.status != chequeo.respuesta.status_code | int
+                          or (chequeo.respuesta.texto | default('')) not in respuesta_local.content | default('')
+  loop:                   "{{ configuracion_web.chequeos }}"
+  loop_control:
+    loop_var:             chequeo
+    label:                "{{ chequeo.path }}"
+  changed_when:           false
+  tags:
+          - prueba
+
+- name:                   Comprobar si el DNS está bien configurado
+  # getent y no nslookup: getent resuelve como lo hace cualquier programa del
+  # sistema (/etc/hosts incluido) y viene de serie; nslookup es un paquete
+  # aparte y solo pregunta al servidor DNS.
+  #
+  # Cuando ejecuto comandos o scripts (command / shell) hay un par de cosas a tener en cuenta:
+  # - El modulo SIEMPRE marca la tarea como changed.
+  # - El módulo (command, shell) pordefecto miran el código de salida del proceso:
+  #   - Si es 0 el comando ha tenido éxito -> CHANGED
+  #   - Si es distinto de 0                -> FAILED
+  ansible.builtin.command:
+    cmd:                  "getent hosts {{ configuracion_web.nombre_servidor }}"
+  changed_when:           false
+  delegate_to:            localhost
+  tags:
+          - prueba
+
+- name:                   Comprobar si el puerto es accesible desde fuera (FIREWALL)
+  ansible.builtin.wait_for:
+    port:                 "{{ configuracion_web.puerto }}"
+    timeout:              30
+    state:                started
+    # Desde la máquina donde corre Ansible, contra el nombre del servidor. O
+    # contra direccion_pruebas, si nos la han dado porque ese nombre no lleva
+    # a la máquina desde aquí (el caso del laboratorio: ver los argumentos).
+    host:                 "{{ configuracion_web.direccion_pruebas or configuracion_web.nombre_servidor }}"
+  delegate_to:            localhost # La prueba la ejecuto desde la máquina donde ejecuta ansible, no desde el remoto
+  tags:
+          - prueba
+
+- name:                   Comprobar si la web responde correctamente desde fuera en la ruta configurada
+                            # curl http://dominio:80/ruta_de_chequeo // DESDE UNA MAQUINA EXTERNA
+  ansible.builtin.uri:
+    url:                  >-
+                          http://{{ configuracion_web.direccion_pruebas or configuracion_web.nombre_servidor
+                          }}:{{ configuracion_web.puerto }}{{ chequeo.path }}
+    headers:
+      Host:               "{{ configuracion_web.nombre_servidor }}"
+    method:               GET
+    return_content:       true
+    status_code:
+                        - "{{ chequeo.respuesta.status_code }}"
+  register:               respuesta_externa
+  failed_when:            >-
+                          respuesta_externa.status != chequeo.respuesta.status_code | int
+                          or (chequeo.respuesta.texto | default('')) not in respuesta_externa.content | default('')
+  loop:                   "{{ configuracion_web.chequeos }}"
+  loop_control:
+    loop_var:             chequeo
+    label:                "{{ chequeo.path }}"
+  changed_when:           false
+  delegate_to:            localhost
+  tags:
+          - prueba

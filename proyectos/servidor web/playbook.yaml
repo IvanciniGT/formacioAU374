@@ -1,0 +1,67 @@
+- name:                       Instalación y Configuración de NGINX y despliegue de la Web
+  hosts:                      all
+  gather_facts:               false
+
+  # become:                     true # Si lo pongo aqui ya no tengo que ponerlo abajo.
+                                     # MALA PRACTICA!!!! Todo lo que haga debe ser con permisos de superusuario ? RARO!
+                                     # Mejor es identificar las tareas que si lo necesitan y poner el become solo en esas.
+  vars:
+    distros_soportadas:
+      - debian
+      - redhat
+
+  # Los include llevan `tags: always` además del `apply`. El `apply` etiqueta las
+  # tareas de DENTRO; el include en sí también es una tarea, y si no lleva
+  # etiqueta, un --tags configuracion se lo salta y no llega a abrir el fichero.
+  pre_tasks:
+    - name:                             Pretareas del playbook
+      ansible.builtin.include_tasks:
+        file:                           pre_tasks/main.yaml # En este caso usamos la anotación free-form para incluir erl fichero de tareas
+                                                            # Muchos módulos soportan la anotación free-form, donde se puede pasar directamente un parametro.
+        apply:
+          tags:
+            - always
+      tags:
+        - always
+
+  tasks:
+    - name:                             Tareas principales del playbook
+      ansible.builtin.include_tasks:
+        file:                           tasks/main.yaml
+      tags:
+        - always
+
+  post_tasks:
+    - name:                             Posttareas del playbook
+      ansible.builtin.include_tasks:    post_tasks/main.yaml
+      tags:
+        - always
+
+  handlers:
+    # LO NORMAL, EN UN SERVIDOR DE VERDAD: systemd.
+    #
+    # En nuestro laboratorio las máquinas son CONTENEDORES, y en un contenedor
+    # el proceso 1 no es systemd sino sshd: no hay systemctl al que pedirle
+    # nada. Por eso la tarea de systemd queda comentada y la sustituye la
+    # de abajo, que habla directamente con el proceso de nginx.
+    #
+    # Y no, reiniciar el pod no es la alternativa: el pod sale de una imagen que
+    # solo trae sshd, así que uno nuevo arranca SIN nginx, sin web y sin
+    # configuración. Reiniciarlo no reinicia el servicio: reconstruye la máquina.
+    #
+    # - name:                   Recargar nginx
+    #   ansible.builtin.service:
+    #     name:                 nginx
+    #     state:                reloaded
+    #   become:                 true
+    #   listen:                 CONFIGURACION_NGINX_CAMBIADA
+
+    - name:                   Recargar nginx
+      # reload y no restart: nginx relee la configuración con los procesos
+      # nuevos y deja terminar las peticiones que ya estaban en curso. Un
+      # restart cortaría a quien estuviera descargando algo en ese momento.
+      ansible.builtin.command:
+        cmd:                  nginx -s reload
+      changed_when:           true
+      become:                 true
+      listen:                 CONFIGURACION_NGINX_CAMBIADA
