@@ -1,0 +1,3 @@
+[submodule "proyectos/instalacion_paquetes"]
+	path = proyectos/instalacion_paquetes
+	url = https://github.com/IvanciniGT/ansible-role-instalacion_paquetes.git
