@@ -770,7 +770,7 @@ Los módulos son los que POR DEFECTO (y podré cambiarlo y en muchos casos querr
       # Con su módulo
     - name: Tarea6
       # Con su módulo
-      listen: CAMBIO_EN_CONFIGURACION
+      notify: CAMBIO_EN_CONFIGURACION
   handlers:
     - name: Handler1
       # Con su módulo
