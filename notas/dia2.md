@@ -352,3 +352,35 @@ Y cada vez que alguien en mi empresa tenga que instalar un paquete, solo tendrá
 Y esto tiene otra ventaja adicional:
 TODOS LOS FICHEROS DE CONFIGRUACION DE TODOS LOS PLAYBOOKS TENDRAN LA MISMA ESTRUCTURA.
 Y si muevo a alguien de un dpto a otro, lo que se encontrará será algo con lo que sienta totalmente familiarizado, sin tener que aprender estructuras diferentes para cada playbook.
+
+---
+
+# Estructura de un role:
+
+rolename/
+  defaults/                 Argumentos de nuestro role. Lo que me dara un usuario al usar el role.
+    main.yml
+  files/                    Archivos que nuestro role lea y copie a los remotos.
+  handlers/                 El listado de posibles handlers que se ejecutarán si son alctivados por las tareas del role.
+    main.yml
+  meta/                     Información /metadatos adicionales del playbook:
+                            - Quien es el autor, licencia, descripción del role.
+                            - Dependencias con otros roles si las hubiera.
+    main.yml                  
+  tasks/
+    main.yml                El listado de tareas que ejecutará el role.
+  templates/                Archivos que nuestro role lea y copie a los remotos, transformándolos en el proceso.
+                            Plantillas, que se se rellenarán con valores concretos. Se escriben en formato jinja.
+                            La extensión de estos archivos es .j2
+  vars/                     Constantes de nuestro role. Datos que necesita,definidos en tiempo de desarrollo.
+    main.yml
+
+La estructura de un role viene impuesta por Ansible. Esas carpetas y ess archivos no los puedo llamar como me de la gana.
+Cuando importamos un role, dentro de un playbook, ansible busca en automático esas carpetas y archivos siguiendo la estructura que hemos visto.
+Si puedo, si no uso alguna de esas carpetas borrarla. No es obligatorio tener todas las carpetas, solo las que realmente necesite el role.
+
+# Por donde empiezo a trabajar cuando creo un role?
+
+- Los datos que me tienen que pasar!, lo que metemos en defaults/main.yml.
+  En paralelo, definir funcionalmente que debe hacer el role. 
+- Listado de tareas

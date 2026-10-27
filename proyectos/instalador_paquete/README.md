@@ -1,7 +1,9 @@
-Role Name
+instalador_paquete
 =========
 
-A brief description of the role goes here.
+Este role instala un paquete, en máquinas con distribución de GNU/Linux:
+- Redhat
+- Debian
 
 Requirements
 ------------

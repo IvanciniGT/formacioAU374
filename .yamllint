@@ -15,7 +15,7 @@ rules:
   comments-indentation: false
   document-start: disable
   line-length:
-    max: 160
+    max: 200
   braces:
     min-spaces-inside: 0
     max-spaces-inside: 1
