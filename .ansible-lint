@@ -1,0 +1,11 @@
+---
+# var-naming[no-role-prefix] es de ansible-lint, no de yamllint: puesta en
+# .yamllint, yamllint rechaza la configuración entera y se pierden también las
+# reglas del curso (alinear en columna).
+#
+# Se apaga para todo el repositorio por comodidad en clase: los argumentos de
+# los roles del curso son su interfaz y no llevan prefijo. Lo estricto sería
+# mantenerla y poner un noqa en cada tarea afectada, como hace el role
+# instalacion_paquetes en su propio .ansible-lint.
+skip_list:
+  - var-naming[no-role-prefix]

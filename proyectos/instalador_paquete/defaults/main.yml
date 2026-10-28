@@ -4,6 +4,7 @@
 # Este archivo sirve a 2 propósitos:
 # 1. Definir / dar valores por defecto a los argumentos del role.
 # 2. Servir de plantilla para quien usar nuestro role, mostrando la estructura esperada y los valores por defecto.
+
 paquete:
   nombre:               ~         # El paquete que se desea instala. Ejemplo: "nginx"
   # version:

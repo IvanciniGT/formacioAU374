@@ -5,61 +5,82 @@ Este role instala un paquete, en máquinas con distribución de GNU/Linux:
 - Redhat
 - Debian
 
-Requirements
-------------
-
-Any pre-requisites that may not be covered by Ansible itself or the role should be mentioned here. For instance, if the role uses the EC2 module, it may be a good idea to mention in this section that the boto package is required.
+Realmente es un wrapper sobre el role `instalador_paquete_concreto` que facilita la instalación de paquetes específicos con sus repositorios y versiones correspondientes a la distribución de GNU/Linux en uso en el servidor concreto.
 
 Role Variables
 --------------
 
-Ejemplo:
+| Variable | Descripción |
+|----------|-------------|
+| paquete  | Diccionario con la información del paquete a instalar, incluyendo nombre, versión y configuración específica para cada distribución. | 
+| paquete.nombre | Nombre del paquete a instalar. |
+| paquete.version | Versión del paquete a instalar. |
+| paquete.version.name | Nombre de la versión del paquete a instalar. |
+| paquete.version.operator | Operador de comparación de la versión del paquete a instalar. Puede ser : `=`, `>=`, `<=`, `>`, `<` |
+| paquete.redhat | Configuración específica para la distribución Redhat. |
+| paquete.redhat.version | Versión del paquete para la distribución Redhat. |
+| paquete.redhat.version.name | Nombre de la versión del paquete para la distribución Redhat. |
+| paquete.redhat.version.operator | Operador de comparación de la versión del paquete para la distribución Redhat. Puede ser : `=`, `>=`, `<=`, `>`, `<` |
+| paquete.redhat.repo | Repositorio del paquete para la distribución Redhat. |
+| paquete.redhat.repo.url | URL del repositorio del paquete para la distribución Redhat. |
+| paquete.redhat.repo.key | Clave del repositorio del paquete para la distribución Redhat. |
+| paquete.debian | Configuración específica para la distribución Debian. |
+| paquete.debian.version | Versión del paquete para la distribución Debian. |
+| paquete.debian.version.name | Nombre de la versión del paquete para la distribución Debian. |
+| paquete.debian.version.operator | Operador de comparación de la versión del paquete para la distribución Debian. Puede ser : `=`, `>=`, `<=`, `>`, `<` |
+| paquete.debian.repo | Repositorio del paquete para la distribución Debian. |
+| paquete.debian.repo.url | URL del repositorio del paquete para la distribución Debian. |
+| paquete.debian.repo.key | Clave del repositorio del paquete para la distribución Debian. |
+| paquete.debian.repo.suite | Suite del repositorio del paquete para la distribución Debian. |
+| paquete.debian.repo.components | Componentes del repositorio del paquete para la distribución Debian. |
 
-```yaml
-paquete:
-  nombre: "nginx"
-  version:
-          name: "1.26.2"
-          operator: ">="
-  redhat:
-       version:
-              name: "1.26.2-1.el9.ngx"
-              operator: ">="
-       repo:
-              url: "https://nginx.org/packages/rhel/$releasever/$basearch/"
-              key: "https://nginx.org/keys/nginx_signing.key"
-  debian:
-       version:
-              name: "1.26.2-1~noble"
-              operator: "="
-       repo:
-              url: "https://nginx.org/packages/ubuntu"
-              key: "https://nginx.org/keys/nginx_signing.key"
-              suite: "noble"
-              components:
-                - "nginx"
-```
 
 Dependencies
 ------------
 
-A list of other roles hosted on Galaxy should go here, plus any details in regards to parameters that may need to be set for other roles, or variables that are used from other roles.
+Este role necesita de otro role para funcionar.
+El role requerido es `instalador_paquete_concreto`.
 
 Example Playbook
 ----------------
 
 Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
 
+```yaml
     - hosts: servers
-      roles:
-         - { role: username.rolename, x: 42 }
+      ansible.builtin.include_role:
+        name: instalador_paquete
+        vars:
+          paquete:
+          nombre: "nginx"
+          version:
+                  name: "1.26.2"
+                  operator: ">="
+          redhat:
+              version:
+                      name: "1.26.2-1.el9.ngx"
+                      operator: ">="
+              repo:
+                      url: "https://nginx.org/packages/rhel/$releasever/$basearch/"
+                      key: "https://nginx.org/keys/nginx_signing.key"
+          debian:
+              version:
+                      name: "1.26.2-1~noble"
+                      operator: "="
+              repo:
+                      url: "https://nginx.org/packages/ubuntu"
+                      key: "https://nginx.org/keys/nginx_signing.key"
+                      suite: "noble"
+                      components:
+                        - "nginx"
+```
 
 License
 -------
 
-BSD
+MIT-0
 
 Author Information
 ------------------
 
-An optional section for the role authors to include contact information, or a website (HTML is not allowed).
+Si necesitas una mano con el role, te cobro un café: <ivan.osuna.ayuste@gmail.com>

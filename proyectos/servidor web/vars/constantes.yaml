@@ -4,6 +4,7 @@ dependencias:
           name:          "1.7.1"
           matching:      ">="
   rsync:                 {}
+  curl:                  {}
 
 # Dónde espera nginx la configuración de un sitio. No es un argumento: no
 # depende de quien ejecute el playbook sino del nginx.conf que trae el paquete
