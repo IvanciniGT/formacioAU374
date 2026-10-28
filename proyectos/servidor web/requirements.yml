@@ -14,6 +14,12 @@ collections:
 roles:
   # El role vive en su propio repositorio. Se fija por etiqueta, no por rama:
   # una rama se mueve y la imagen dejaría de ser reproducible.
-  - name:             instalacion_paquetes
-    src:              git+https://github.com/IvanciniGT/ansible-role-instalacion_paquetes.git
+  - name:             instalador_paquetes
+    src:              git+https://github.com/IvanciniGT/ansible-role-instalador_paquetes.git
+    version:          "v1.2.0"
+  - name:             instalador_paquete
+    src:              git+https://github.com/IvanciniGT/ansible-role-instalador_paquete.git
+    version:          "v1.2.0"
+  - name:             instalador_paquete_concreto
+    src:              git+https://github.com/IvanciniGT/ansible-role-instalador_paquete_concreto.git
     version:          "v1.2.0"

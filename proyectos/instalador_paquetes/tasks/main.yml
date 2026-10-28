@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: MIT-0
+---
+# tasks file for instalador_paquetes
+
+- name:                               Obtener la distribución de sistema operativo si no se ha obtenido previamente
+  ansible.builtin.setup:
+    gather_subset:
+                                    - "!all"
+                                    - "!min"
+                                    - "distribution"
+  when:                               ansible_facts['distribution'] is not defined
+  tags:
+    - always
+
+- name:                               Normalizar la información de la distribución
+  ansible.builtin.set_fact:
+    ansible_facts:
+      distribucion_normalizada:       "{{ ansible_facts.os_family | lower }}"
+  tags:
+    - always
+
+- name:                               Comprobar que la familia del sistema operativo está soportada por el role
+  ansible.builtin.assert:
+    that:
+                                    - distribucion_normalizada in distribuciones_soportadas_por_el_role
+    fail_msg:                       >-
+                                      El role instalacion_paquetes no sabe instalar en
+                                      {{ ansible_facts.os_family }}. Soporta: {{ distribuciones_soportadas_por_el_role | join(', ') }}
+    quiet:                            true
+  tags:
+                                    - always
+
+- name:                               Llamar al Role que instala cada paquete
+  ansible.builtin.include_role:
+    name:                             instalador_paquete
+  vars:
+    paquetes:                         "{{ paquete_actual.value | combine({'nombre': paquete_actual.key}) }}"
+  loop:                               "{{ paquetes | dict2items }}"
+  loop_control:
+    loop_var:                         paquete_actual
+    label:                            "{{ paquete_actual.key }}"
+  tags:
+                                    - always

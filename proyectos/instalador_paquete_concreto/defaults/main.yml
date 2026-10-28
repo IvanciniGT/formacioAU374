@@ -1,0 +1,17 @@
+---
+# Argumentos del role. Todos menos `paquete` son opcionales: un valor vacío
+# significa «no me lo han dado» y el role tira de lo que haya por defecto en la
+# distribución (sus repositorios oficiales y la última versión disponible).
+#
+# Van vacíos y no con `omit` a propósito: `omit` solo funciona en los
+# parámetros de un módulo. En `vars:` de un include_role se convierte en un
+# texto raro (__omit_place_holder__...) que llega aquí como si fuera un valor.
+
+paquete:              ""          # OBLIGATORIO. Nombre del paquete: nginx, git...
+version:              ""          # Del tipo a.b.c. Vacío: la última disponible
+operador_version:     "="         # =  >=  <=  >  <
+repositorio:          ""          # URL del repositorio. Vacío: los oficiales
+clave:                ""          # URL de la clave GPG del repositorio
+suite:                ""          # Solo Debian/Ubuntu. Vacía: la de la versión del host (noble, jammy...)
+componentes:                      # Solo Debian/Ubuntu: componentes del repositorio
+                    - main

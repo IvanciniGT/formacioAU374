@@ -2,7 +2,7 @@ dependencias:
   git:
       version:
           name:          "1.7.1"
-          matching:      ">="
+          operator:      ">="
   rsync:                 {}
   curl:                  {}
 

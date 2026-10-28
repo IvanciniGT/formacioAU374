@@ -1,0 +1,35 @@
+---
+# Si existe este fichero, ansible-lint deja de usar su configuración interna de
+# yamllint y usa ésta. Por eso las primeras reglas son copia de las suyas
+# (ansiblelint/data/.yamllint): sin ellas aparecen de golpe avisos que antes no
+# salían, como la longitud de línea o el --- inicial.
+#
+# Las tres últimas son las del curso: alinear los valores en columna y sangrar
+# a gusto. Dejan YAML válido; yamllint solo las considera mal estilo.
+extends: default
+
+rules:
+  # ── Las de ansible-lint ─────────────────────────────────────────────────
+  comments:
+    min-spaces-from-content: 1
+  comments-indentation: false
+  document-start: disable
+  line-length:
+    max: 160
+  braces:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+  octal-values:
+    forbid-implicit-octal: true
+    forbid-explicit-octal: true
+
+  # ── Las del curso ───────────────────────────────────────────────────────
+  # Alinear los valores en columna: `name:        valor`
+  colons:
+    max-spaces-after: -1
+  # Lo mismo en las listas: `-             always`
+  hyphens:
+    max-spaces-after: -1
+  # YAML solo exige que cada nivel sea coherente consigo mismo; yamllint
+  # querría el mismo sangrado en todo el fichero.
+  indentation: disable

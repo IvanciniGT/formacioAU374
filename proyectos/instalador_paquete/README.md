@@ -52,27 +52,27 @@ Including an example of how to use your role (for instance, with variables passe
         name: instalador_paquete
         vars:
           paquete:
-          nombre: "nginx"
-          version:
-                  name: "1.26.2"
-                  operator: ">="
-          redhat:
-              version:
-                      name: "1.26.2-1.el9.ngx"
-                      operator: ">="
-              repo:
-                      url: "https://nginx.org/packages/rhel/$releasever/$basearch/"
-                      key: "https://nginx.org/keys/nginx_signing.key"
-          debian:
-              version:
-                      name: "1.26.2-1~noble"
-                      operator: "="
-              repo:
-                      url: "https://nginx.org/packages/ubuntu"
-                      key: "https://nginx.org/keys/nginx_signing.key"
-                      suite: "noble"
-                      components:
-                        - "nginx"
+            nombre: "nginx"
+            version:
+                    name: "1.26.2"
+                    operator: ">="
+            redhat:
+                version:
+                        name: "1.26.2-1.el9.ngx"
+                        operator: ">="
+                repo:
+                        url: "https://nginx.org/packages/rhel/$releasever/$basearch/"
+                        key: "https://nginx.org/keys/nginx_signing.key"
+            debian:
+                version:
+                        name: "1.26.2-1~noble"
+                        operator: "="
+                repo:
+                        url: "https://nginx.org/packages/ubuntu"
+                        key: "https://nginx.org/keys/nginx_signing.key"
+                        suite: "noble"
+                        components:
+                          - "nginx"
 ```
 
 License

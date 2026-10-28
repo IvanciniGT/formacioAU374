@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: MIT-0
+---
+paquetes: {}
+  # <nombre_paquete>:                # El paquete que se desea instala. Ejemplo: "nginx"
+      # version:
+      #        name:         ~        # La version a instalar del paquet. Ejemplo "1.18.0"
+                                    # Si no se pasa valor, se instalará la última versión disponible.
+      #        operator:     "="      # Operador de comparación para la versión. Ejemplo: ">=", "<=", "=", etc.
+                                    # Si no se pasa valor, se usará el operador por defecto "=
+      # Información particular pàra cada una de las distros soportadas. Nuestro role soporta solo "debian" y "redhat".
+      # redhat:
+            # version:                                                                # Si no se suministra versión se usará la versión por defecto del paquete en redhat
+            #       name:         <pon aquí la versión específica de redhat>          # Versión específica del paquete para redhat
+            #       operator:     "<pon aquí el operador específico de redhat>"       # Operador de comparación para la versión específica del paquete en redhat
+            # repo:                                                                   # Repositorio específico para redhat
+            #        url:          <pon aquí la URL del repo>                         # Si no se suministra, se usará el repositorio oficial
+            #        key:          <pon aquí tu clave del repo>                       # Si no se pasa, no se configura clave.
+      # debian:
+            # version:                                                                # Si no se suministra versión se usará la versión por defecto del paquete en debian
+            #       name:         <pon aquí la versión específica de debian>          # Versión específica del paquete para debian
+            #       operator:     "<pon aquí el operador específico de debian>"       # Operador de comparación para la versión específica del paquete en debian
+            # repo:                                                                   # Repositorio específico para debian
+            #        url:          <pon aquí la URL del repo>                         # Si no se suministra, se usará el repositorio oficial
+            #        key:          <pon aquí tu clave del repo>                       # Si no se pasa, no se configura clave.
+            #        suite:        <pon aquí la suite del repo>                       # Si no se pasa, se usa el nombre en clave de la distro (ansible_distribution_release). Ejemplo: "noble"
+            #        components:                                                      # Si no se pasan, se usa "main"
+            #          - <pon aquí cada componente del repo>                          # Ejemplo: "nginx"
+
+# Ejemplos
+#
+# Ejemplo 1: Instalar una versión específica de nginx de repos oficiales
+# paquetes:
+#   nginx:
+#     version:
+#           name: "1.18.0"
+#           operator: "="
+#
+# Ejemplo 2: Instalar cualquier verisón de curl y telnet
+# paquetes:
+#   curl: {}
+#   telnet: {}
+#

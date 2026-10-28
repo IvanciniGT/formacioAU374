@@ -19,15 +19,25 @@
               # - suite y componentes (opcionales, solo Debian/Ubuntu)
               # Nuestras variables NO SE LLAMAN ASI.
               # Lo que podemos hacer es definir ESAS VARIABLES SOLO PARA ESTA TAREA
-        apply:
-          tags:
-              - instalacion
       # noqa: var-naming[no-role-prefix]
       # El role se diseñó con estos nombres (paquete, version...) y son su interfaz
       # pública: ver su README. El prefijo lo pide ansible-lint para las variables
       # internas de un role, y las suyas sí lo llevan.
       vars:
+          # La variable configuracion_nginx, tiene esta pinta:
+          #     version:
+          #         nombre: "1.7.1",
+          #         operador: ">="
+          #     redhat:
+          #       version:
+          #         nombre: "1.7.1"
+          #         operador: ">="
+          #        repo:
+          #           url: "http://example.com/repo"
+          #           clave: "ruta/a/clave"
         paquete:          "{{ configuracion_nginx | combine({'nombre': 'nginx'}) }}"
+
+
   rescue: # Los rescue se pueden poner en los bloques y sirven para manejar errores de manera controlada dentro del bloque.
   # Damos tareas que de seben ejecutar caso que en el bloque se haya producido un error.
     - name:               Manejar error en la instalación de nginx

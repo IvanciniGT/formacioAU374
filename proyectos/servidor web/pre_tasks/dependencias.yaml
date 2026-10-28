@@ -9,21 +9,9 @@
 
 - name:                                   Asegurar que las dependencias del playbook están instalado en el host
   ansible.builtin.include_role:
-    name:                                 instalador_paquete
-    apply:
-      tags:
-        - always
-  # noqa: var-naming[no-role-prefix]
-  # El role se diseñó con estos nombres (paquete, version...) y son su interfaz
-  # pública: ver su README. El prefijo lo pide ansible-lint para las variables
-  # internas de un role, y las suyas sí lo llevan.
+    name:                                 instalador_paquetes
   vars:
-    paquete:                              "{{ paquete_actual }}"
-  loop:                                   "{{ dependencias | dict2items }}"
-  # Eso es un filtro jinja..
-  loop_control:
-    loop_var:                             paquete_actual
-    label:                                "{{ paquete_actual.key }}"
+    paquetes:                             "{{ dependencias }}"
   tags:
           - always
 # Pero... para instalar nginx, cúantas veces ejecutaba "instalacion_paquete/main.yaml"? 1
