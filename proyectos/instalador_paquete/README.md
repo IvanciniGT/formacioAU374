@@ -13,7 +13,32 @@ Any pre-requisites that may not be covered by Ansible itself or the role should 
 Role Variables
 --------------
 
-A description of the settable variables for this role should go here, including any variables that are in defaults/main.yml, vars/main.yml, and any variables that can/should be set via parameters to the role. Any variables that are read from other roles and/or the global scope (ie. hostvars, group vars, etc.) should be mentioned here as well.
+Ejemplo:
+
+```yaml
+paquete:
+  nombre: "nginx"
+  version:
+          name: "1.26.2"
+          operator: ">="
+  redhat:
+       version:
+              name: "1.26.2-1.el9.ngx"
+              operator: ">="
+       repo:
+              url: "https://nginx.org/packages/rhel/$releasever/$basearch/"
+              key: "https://nginx.org/keys/nginx_signing.key"
+  debian:
+       version:
+              name: "1.26.2-1~noble"
+              operator: "="
+       repo:
+              url: "https://nginx.org/packages/ubuntu"
+              key: "https://nginx.org/keys/nginx_signing.key"
+              suite: "noble"
+              components:
+                - "nginx"
+```
 
 Dependencies
 ------------
