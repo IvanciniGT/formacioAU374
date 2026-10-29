@@ -64,7 +64,7 @@ paquete:
 #           operator: ">="
 #   redhat:
 #        version:
-#               name: "1.26.2-1.el9.ngx"        # Así numera nginx.org sus RPM para RHEL 9 / Rocky 9
+#               name:  "1.26.2-1.el9.ngx"       # Así numera nginx.org sus RPM para RHEL 9 / Rocky 9
 #               operator: ">="                  # dnf sí entiende rangos: "nginx >= 1.26.2-1.el9.ngx"
 #        repo:
 #               url: "https://nginx.org/packages/rhel/$releasever/$basearch/"
