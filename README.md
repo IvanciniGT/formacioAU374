@@ -45,7 +45,22 @@ Cada alumno tiene su propio espacio, separado del de los demás.
 
 | Usuario    | Alumno            |
 |------------|-------------------|
-| `alumno1`  |                   |
+| `alumno1`  | Sergio C.         |
+| `alumno2`  | Pau S.            |
+| `alumno3`  | Carolina P.       |
+| `alumno4`  | Manuel S.         |
+| `alumno5`  | Marc R.           |
+| `alumno6`  | Alan S.           |
+| `alumno7`  | Youcef B.         |
+| `alumno8`  | Antonio Manuel G. |
+| `alumno9`  | Felipe L.         |
+| `alumno10` | Terry Kome N.     |
+| `alumno11` | Carlos P.         |
+| `alumno12` | Sergio G.         |
+| `alumno13` | Maikel G.         |
+| `alumno14` | Roberto G.        |
+| `alumno15` | Asier T.          |
+| `alumno16` | Erik T.           |
 
 ### Arquitectura
 

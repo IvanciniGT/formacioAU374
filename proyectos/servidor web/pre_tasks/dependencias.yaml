@@ -9,7 +9,7 @@
 
 - name:                                   Asegurar que las dependencias del playbook están instalado en el host
   ansible.builtin.include_role:
-    name:                                 instalador_paquetes
+    name:                                 miempresa.paqueteria.instalador_paquetes
   vars:
     paquetes:                             "{{ dependencias }}"
   tags:

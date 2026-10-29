@@ -332,6 +332,17 @@ Solo que el comando se ejecuta en un entorno AISLADO.
 
 Al final son solo eso.. UNA ALTERNATIVA MUCHO MAS LIGERA A LAS VMs.. pero NADA QUE VER CON COMO LO HACEN!
 
+## Nombre de las imágenes de contenedor
+
+El nombre realmente es una URL. Tiene 3 partes:
+   
+   registry/repo:tag
+   docker.io/library/nginx:latest
+
+   registry.ivanosuna.com/curso/mi-entorno-para-servidor-web:desa
+
+
+
 ## En nuestro caso!!!! Entornos de ejecución para playbooks!
 
 Necesitamos nuestra propia imagen de contenedor... con mis mierdas!

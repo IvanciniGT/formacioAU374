@@ -1,5 +1,0 @@
-.ansible/
-ansible-navigator.log
-*.retry
-.DS_Store
-*-artifact-*.json

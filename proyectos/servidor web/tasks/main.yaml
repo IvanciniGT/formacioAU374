@@ -9,7 +9,7 @@
   block:
     - name:               Asegurar que NGINX queda instalado en el host en la versión que me interesa
       ansible.builtin.include_role:
-        name:             instalador_paquete
+        name:             miempresa.paqueteria.instalador_paquete
               # La tarea de instalación necesita:
               # - paquete
               # - version (opcional)

@@ -6,3 +6,5 @@ ansible-navigator.log
 
 # Lo que genera ansible-builder sin --context: se regenera, no se versiona
 context/
+
+proyectos/miempresa/
