@@ -1,6 +1,0 @@
-# SPDX-License-Identifier: MIT-0
----
-# vars file for instalador_paquete
-distribuciones_soportadas_por_el_role:
-  - debian
-  - redhat

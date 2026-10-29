@@ -10,16 +10,26 @@ collections:
     version:          "2.2.2"
   - name:             community.general      # archive, ufw
     version:          "13.5.0"
-
-roles:
+    # - name:             miempresa.paqueteria
+    #  version:          "1.2.0"
+    # Esto de arriba no guncionaría. Mi colección miempresa.paqueteria no está publicada en ANSIBLE - GALAXY
+    # Mi colección está en un repo de git propio:
+  - name:              https://github.com/IvanciniGT/coleccion-ansible-paqueteria.git
+    type:              git
+    version:           desa # "v1.0.0" tendrá sentido cuando saque una versión de verdad de la colección
+                            # Ahora aun la tengo en pruebas.
+                            # En lugar de una versión, le doy la RAMA! de la que quiero que saque el commit
+                            # Tomará el último commit de esa rama.
+roles: []
   # El role vive en su propio repositorio. Se fija por etiqueta, no por rama:
   # una rama se mueve y la imagen dejaría de ser reproducible.
-  - name:             instalador_paquetes
-    src:              git+https://github.com/IvanciniGT/ansible-role-instalador_paquetes.git
-    version:          "v1.2.0"
-  - name:             instalador_paquete
-    src:              git+https://github.com/IvanciniGT/ansible-role-instalador_paquete.git
-    version:          "v1.2.0"
-  - name:             instalador_paquete_concreto
-    src:              git+https://github.com/IvanciniGT/ansible-role-instalador_paquete_concreto.git
-    version:          "v1.2.0"
+  # Los roles los he movido a una colección
+  # - name:             instalador_paquetes
+  #  src:              git+https://github.com/IvanciniGT/ansible-role-instalador_paquetes.git
+  #  version:          "v1.2.0"
+  # - name:             instalador_paquete
+  #  src:              git+https://github.com/IvanciniGT/ansible-role-instalador_paquete.git
+  #  version:          "v1.2.0"
+  # - name:             instalador_paquete_concreto
+  #  src:              git+https://github.com/IvanciniGT/ansible-role-instalador_paquete_concreto.git
+  #  version:          "v1.2.0"
