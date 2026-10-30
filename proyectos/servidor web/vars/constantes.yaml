@@ -4,7 +4,8 @@ dependencias:
           name:          "1.7.1"
           operator:      ">="
   rsync:                 {}
-  curl:                  {}
+  # curl NO: la prueba con curl corre en localhost (el entorno de ejecución), no
+  # en el host. Y en Rocky viene curl-minimal, que choca con el paquete curl.
 
 # Dónde espera nginx la configuración de un sitio. No es un argumento: no
 # depende de quien ejecute el playbook sino del nginx.conf que trae el paquete
