@@ -1,0 +1,312 @@
+---
+# Lo de las colecciones, roles... filtros.. todo eso está guay.
+# Mejorar la mantenibilidad, estructura, reusabilidad y modularidad del playbook y sus tareas.
+# Pero en paralelo con esto, hay cosas FUNCIONALES que no son tan evidentes... y en los entornos de PRODUCCION son imprescindibles.
+
+# Temas avanzados de control de flujo y ejecución en Ansible
+# De qué tipo de problemas estamos hablando?
+# - Rendimiento.
+# - Alta disponibilidad.
+
+# Qué problemas podemos tener con esto de la Alta disponibilidad?
+# Consideraciones que tendríamos que hacer sobre nuestro playbook SERVIDOR_WEB en un entorno de produccion real:
+# Qué hace nuestro playbook
+# - Instalar un servidor web nginx con una web alojada. O lo actualiza según va pasando el tiempo:
+#   - Nuevas versiones de nginx
+#   - Cambios en la web alojada
+#   - Cambios en la configuración del nginx
+
+# El problema no es si va bien o si va mal. El problema lo enunció un coronel del ejército americano: Murphy.
+# Ley de Murphy: "Si algo puede salir mal, eventualmente saldrá mal."
+# El problema es que ha cuando salga mal (y saldrá mal) que eso no afecte al servicio.
+
+# En producción: Tendremos un solo servidor web? NO
+# Por qué? Cuado un servidor caiga, y se caerá eventualmente, el servicio web no debe interrumpirse.
+# Como afecta esto a nuestro playbook y a su ejecución? NO
+
+# Ejecuto el playbook en el cluster de la web... 5 servidores... Y falla en los 5. A TOMAR POR CULO EL SERVICIO!
+# Y el hecho no es ya ARREGLAR lo que he jodido... eso es una cosa!
+# Otra cosa distinta es NO DEJAR ENTRE TANTO EL SISTEMA SIN SERVICIO!
+
+# Qué hacemos? Cómo impacta esto? Qué debemos tener en cuenta al ejecutar el playbook?
+# Quiero ejecutar el playbook sobre todas las máquinas a la vez? NO...
+# Han dicho.. en este caso no...
+# Mi pregunta es... en algún caso si? En un cluster de nueva creación.
+# Cuántas veces creo el cluster de cero? 1... Cuántas lo actualizo? Cientos...
+# Haré 2 playbooks? NO... Dónde pongo el foco entonces? En las actualizaciones!
+# El único motivo para hacer la instalación de todas a la vez, en lugar de hacerlo con cautela sería ganar tiempo.
+# Me vale de algo ganar tiempo en una tarea que SOLO HARE UNA VEZ y que NO ESTA DANDO SERVICIO? Me da igual!
+# Aún así, tendré en cuenta los temas de rendimiento.. y hay casos donde impactan mucho: En entornos efímeros es importante.
+
+# Teniendo esto en cuenta, cómo ejecuto el playbook para mantener la HA?
+# Segmentar el inventario: Si el cluster tiene 4 máquinas lo ejecuto en 1...
+# Y si va bien? Ya en las otras 3.( y si en las otras 3 falla? Hay muchos casos que no doy HA así.. con 1)
+# - MariaDB/MySQL en cluster activo/activo (galera) necesita al menos 2 arriba para funcionar.
+
+# Puedo ir ejecutando manita:
+# - Ejecuta el playbook en 1.. va bien? SI!!! EUREKA.. A por el otro! .. cruza los dedos.
+# Me da algo ansible para esto? Y nos da muchas cosa!
+
+# Cosas para el control de la ejecución de los playbooks:
+
+# 1. Cuando ejecuto un playbook, puedo pedir que no se ejecute simúltaneamente en más de N hosts: forks
+# $ ansible-playbook --forks N playbook.yaml
+# Esto me ayuda con eso de la HA? En general poco.
+# Esto solo hace que el fallo ocurra por tandas.
+
+# Tengo un cluster de 5 máquinas... y pido que se ejecuten de 2 en dos.
+# - Pues primero se me joden 2
+# - Y luego los otros 2
+# - Y luego el último
+
+- name:       Play que se ejecuta asegurando la alta disponibilidad
+  hosts:      all
+  serial:     [1, 2, "100%"] # 1      Ejecuta en un host a la vez
+              # El 1.. el primero es lo que llamamos un canario
+  max_fail_percentage: 50   # Permite que falle hasta el 50% de los hosts antes de detener la ejecución
+    # Estas 2 etiquetas, que se ven poco en los playbooks, son clave en muchos de ellos.
+  # Estas 2 por si solas no son suficientes
+  # En muchos casos, me interesa controlar el ORDEN DE EJECUCION de los hosts.
+  # si 1... pero cuál primero ?
+  order: inventory # ejecutar en orden del inventario
+         # reverse_inventory  # ejecutar en orden inverso del inventario
+         # sorted  # ejecutar en orden alfabético del inventario
+         # reverse_sorted  # ejecutar en orden inverso alfabético del inventario
+         # shuffle  # ejecutar en orden aleatorio
+  tasks:
+    - name:   Ejecutar tarea con control de HA
+      ansible.builtin.debug:
+        msg: "Ejecutando en {{ inventory_hostname }}"
+
+# Al ejecutar un playbook, por ejemplo un playbook con tarea1, tarea2, tarea3 sobre nodo1, nodo2, nodo3
+# cuál es el orden de ejecución?
+# tarea1: nodo1, nodo2, nodo3
+# tarea2: nodo1, nodo2, nodo3
+# tarea3: nodo1, nodo2, nodo3
+
+# Esto se complica más... si uso forks 2:
+# tarea1: nodo1, nodo2 -> nodo3
+# tarea2: nodo1, nodo2 -> nodo3
+# tarea3: nodo1, nodo2 -> nodo3
+
+# Esto se complica más... si uso serial 2:
+# tarea1: nodo1, nodo2
+# tarea2: nodo1, nodo2
+# tarea3: nodo1, nodo2
+# tarea1: nodo3
+# tarea2: nodo3
+# tarea3: nodo3
+
+# Y si uso serial? 1
+# tarea1: nodo1
+# tarea2: nodo1
+# tarea3: nodo1
+# tarea1: nodo2
+# tarea2: nodo2
+# tarea3: nodo2
+# tarea1: nodo3
+# tarea2: nodo3
+# tarea3: nodo3
+
+# Esto hay casos donde nome es suficiente.
+# Hay veces que hay tareas de bajo impacto que se pueden ejecutar en paralelo sin riesgo para la HA.
+# Pero hay tareas que si son más críticas... o que pueden requerir de un control más estricto en la forma de ejecución
+
+- name: Play con control más estricto al ejecutar una tarea crítica
+  hosts: all
+  serial: 5
+  max_fail_percentage: 50
+  tasks:
+    - name: Ejecutar tarea normal
+      ansible.builtin.debug:
+        msg: "Ejecutando tarea normal en {{ inventory_hostname }}"
+    - name: Ejecutar tarea crítica
+      ansible.builtin.debug:
+        msg: "Reiniciar el servidor (tarea crítica) {{ inventory_hostname }}"
+      throttle: 1 # 2
+      # esta palabra hace embudo sobre la tarea concreta.
+      # El play se puede estar ejedcutando sobre 5 hosts.. pero la tarea crítica solo se ejecuta en 1 host a la vez debido a throttle: 1
+# Eso para qué me sirve con respecto a la HA? Si se cae 1... esto hace que ya no se ejecute en más? NO
+# Esto solo hace que se jodan de uno en uno.
+# Esto lo usamos mucho en combinación con otra cosa
+      any_errors_fatal: true # Este hace que si la tarea falla en 1 host cualquiera, se detenga la ejecución en todos los hosts para la siguiente.
+    - name: Hosts críticos
+      # Solo quiero que se detenga el playbook si se falla en un host crítico o en 2.
+      block:
+        - name: Actualizar elastic
+          ansible.builtin.debug:
+            msg: "Actualiza elastic en {{ inventory_hostname }}"
+      rescue:
+        - name: Terminar play en host crítico
+          ansible.builtin.meta: end_play       # Sólo entra aquí la máquina que ha fallado
+          when: inventory_hostname in ["host1", "host2"]
+        # La tarea actualiza el elastic a una nueva versión.
+        # Esto tiene sentido?
+        # ElasticSearch... En un cluster de elastic search, con N nodos... 3 son maestros.
+        # Si falla en 1 maestro, sigue funcionando... pero al siguiente que se caiga, el cluster dejar de funcionar inmediato.
+        # Al menos necesita 2 maestros activos para que el cluster funcione correctamente.
+
+# ansible.builin.meta
+# Este módulo permite controlar el flujo de ejecución del playbook, saltándose los flujos ordinarios:
+#      ansible.builtin.meta: flush_handlers        Esto hace que los handlers se ejecuten en este momento.. en medio de un listado de tareas.
+#      ansible.builtin.meta: end_host           Esto hace que se termine la ejecución del play solo para el host actual.
+#      ansible.builtin.meta: end_play           Esto hace que se termine la ejecución del play actual inmediatamente.
+
+    - name: Tareas que solo quiero que se ejecuten 1 vez (por lote)
+      ansible.builtin.debug:
+        msg: "Esta tarea solo se ejecuta una vez por lote."
+      run_once: true  # Hace que la tarea solo se ejecute una vez por lote, sin importar cuántos hosts estén en el play.
+      delegate_to: localhost  # A localhost o a otro.
+
+      # Nota sobre el run_once...
+      # Cuántas veces hemos dicho que se ejecuta esa tarea a la que hemos puesto run_once? Solo 1 vez POR LOTE
+      # Los lotes los marca SERIAL... no el FORKS
+
+
+# NOTA SOBRE throttle: Esto limita la ejecución de la tarea al número máximo que pongo atrás:
+# throttle: 1
+# Esto significa que solo se ejecutará 1 host a la vez para esta tarea.
+# Ojo al ponerla en un bloque!
+# Si pongo throttle dentro de un bloque, NO ES QUE EL BLOQUE ENTERO SE EJECUTE DE UNO EN UNO.
+# Se copia/aplica el throttle a cada tarea dentro del bloque, no al bloque entero.
+
+    - name: Bloque con throttle
+      throttle: 1
+      block:
+        - name: Tarea 1
+          ansible.builtin.debug:
+            msg: "Ejecutando tarea 1 con throttle"
+        - name: Tarea 2
+          ansible.builtin.debug:
+            msg: "Ejecutando tarea 2 con throttle"
+
+# Primero se ejecuta la tarea1 de uno en uno y después la tarea2 también de uno en uno, debido al throttle aplicado a cada tarea dentro del bloque.
+# NO OCURRE QUE EL BLOQUE ENTERO SE EJECUTE DE UNO EN UNO.
+
+# Si quiero que se ejecute la pareja tarea1 y tarea2 de uno en un, poidríamos pensar que podemos usar un include_(con role o taks...) NO SE SOPORTA.
+    - name: Bloque con throttle
+      # throttle: 1
+      ansible.builtin.include_tasks:
+        file: tasks.yml
+        # Si se podría otra cosa:
+        apply:
+          throttle: 1 # Pero de nuevo esto asigna a cada tarea de dentro del listado (role) individualmente, no al bloque completo.
+
+# Sobre rendimiento
+
+- name:      Play que ejecuta con estrategia
+  hosts: all
+  # Cuando ejecutamos un play, el orden de ejecución de las tareas es:
+  # tarea1 -> nodo1, nodo2, nodo3...
+  # tarea2 -> nodo1, nodo2, nodo3...
+  # Es decir, se ejecuta tarea por tarea en todos los nodos antes de pasar a la siguiente tarea.
+  # Este orden es por defecto. Se puede cambiar. Eso es el strategy
+  # Por defecto, Ansible usa la estrategia 'linear', que sigue el orden descrito arriba.
+  # strategy: linear  # Esto asegura que se siga el orden por defecto de ejecución de tareas.
+  # Hay otra estragia que podemos usar:
+  strategy: free  # Con esta estrategia, los nodos pueden ejecutar tareas de manera independiente, sin esperar a que todos los nodos terminen la tarea actual.
+  # nodo1 -> tarea1..............tarea2.....tarea3
+  # nodo2 -> tarea1..tarea2...tarea3
+  # nodo3 -> tarea1..................................tarea2.....tarea3
+  # Esto me permite que unas máquians más lentas no penalicen a máquinas más rápidas...
+  # PERO! Pierdo control sobre el orden exacto de ejecución de las tareas entre los nodos.
+  # En este caso, no podría hacer cosas como:
+  # Si una tarea falla en un nodo, no sigas ejecutando el playbook en los demás nodos.
+  # De hecho si podría hacerlo, pero no me garantiza que no haya nodos ya en los que se hayan ejecutado tareas posteriores o incluso en los que el playbook haya terminado.
+  # Hay mucha dependencia entra las estrategias de ejecución, los fork, run_once, throttle, etc.
+  # Al combinarlos, tengo que analizar mucho el comportamiento.
+  tasks:
+    - name: Tarea 1
+      ansible.builtin.shell:
+        cmd: |
+          echo "Ejecutando tarea 1 que tarda mucho tiempo"
+          sleep 10
+      changed_when: false
+    - name: Tarea 2
+      ansible.builtin.shell:
+        cmd: |
+          echo "Ejecutando tarea 2 que tarda mucho tiempo"
+          sleep 20
+      changed_when: false
+    - name: Tarea 3
+      ansible.builtin.debug:
+        msg: "Ejecutando tarea 3 después de las tareas anteriores"
+
+  # Orden de ejecución intra nodo? Dentro de un nodo?
+    # Nodo1: Tarea 1 -> Tarea 2 -> Tarea 3
+  # Qué pasa si la tarea2 no depende de la tarea 1? Podría ejecutarlas en paralelo dentro de un nodo!
+    # Nodo1: Tarea 1 ---> Tarea 3 (pero tarea 3, requiere que ambas hayan acabado)
+    #        Tarea 2 --->
+  # Como podemos modelar esto? Nos sale otra palabrota de ansible: async/poll
+  # async: me permite ejecutar una tarea de forma asíncrona (como si la lanzacemos en segundo plano)
+  # y seguir ejecutando.
+  # poll: 0     Esto indica que Ansible no esperará a que la tarea asíncrona termine y seguirá con la siguiente tarea inmediatamente.
+  # poll: 50    Esto indica que Ansible pregunta cada 50 segundos si la tarea asíncrona ha terminado, pero espera hasta que acabe antes de acabar el playbook
+  # En el asyn ponemos un número también: esto indica el tiempo máximo que Ansible permitirá que la tarea asíncrona se ejecute antes de considerarla fallida.
+
+
+  # Depende del escenario de uso, ponemos poll:0 o poll: con un numero.
+  # poll: número. Lo usamos cuando una tarea puede tardar mucho.. y me puede saltar un connection exceeded si estoy esperando.
+  # La conexión se hace por ssh... y tiene un máximo de tiempo. Si una tarea tarda mucho, quizás se está ejecutando pero Ansible pierda la conexión antes de que termine (se corta el ssh)
+  # Para evitar esto,  async: para que la conexión se cierre.Puedo no querer pasar a otra tarea. Ahí entra el poll con un número. Cada cuanto pregunto.
+
+  # Escenario 1 de uso del async.
+    - name: Tarea que puede tardar la vida (Backup a bbdd)
+      ansible.builtin.shell:
+        cmd: |
+          echo "Realizando backup de la base de datos"
+          sleep 60
+      changed_when: false
+      async: 120   # Esto hace que la tarea se ejecute de forma asíncrona y cierro conexión ssh... mientras sigue ejecutando en segundo plano
+                   # Como mucho 120 segundos antes de considerarla fallida
+      poll: 30     # Vete preguntando cada 30 segundos si la tarea ha terminado
+                   # Si no pongo poll , da igual... solo que ansible aplica un valor por defecto (15s)
+    - name: Tarea que se ejecuta después del backup
+      ansible.builtin.debug:
+        msg: "Esta tarea se ejecuta después de la tarea de backup, pero solo cuando el backup ha terminado"
+
+  # Escenario2: Tareas que quiero en paralelo dentro de un nodo.
+    - name: Tarea A en paralelo
+      ansible.builtin.shell:
+        cmd: |
+          echo "Ejecutando tarea A en paralelo"
+          sleep 30
+      changed_when: false
+      async: 60        # Tiempo máximo que la tarea puede ejecutarse antes de considerarla fallida
+      poll: 0          # No esperamos a que termine, sigue con la siguiente tarea
+      register: resultado_tarea1 # Al trabajar con asyn, en el register, además de los resultados habituales,
+                                 # se guarda el ansible_job_id que necesitamos para hacer el seguimiento de la tarea
+
+    - name: Tarea B en paralelo
+      ansible.builtin.shell:
+        cmd: |
+          echo "Ejecutando tarea B en paralelo"
+          sleep 40
+      changed_when: false
+      async: 60
+      poll: 0          # No esperamos a que termine, sigue con la siguiente tarea
+      register: resultado_tarea2
+
+    - name: Esperar a que las tareas A terminen
+      ansible.builtin.async_status:    # Este modulo solo nos ofrece el estado actual
+        jid: "{{ resultado_tarea1.ansible_job_id }}"
+      register: async_poll
+      until: async_poll.finished       # Esto se ejecuta en bucle cada 10 segundos... un máximo de 15 veces
+      retries: 15
+      delay: 10
+
+    - name: Esperar a que la tarea B termine
+      ansible.builtin.async_status:
+        jid: "{{ resultado_tarea2.ansible_job_id }}"
+      register: async_poll
+      until: async_poll.finished
+      retries: 15
+      delay: 10
+      # En este caso, para esperar antes de ejecutar la tarea C, lo qye tenemos es un módulo
+
+
+    - name: Tarea C... que depende de que tarea 1 y tarea 2 hayan terminado
+      ansible.builtin.shell:
+        cmd: |
+          echo "Ejecutando tarea C después de que tarea 1 y tarea 2 hayan terminado"
+      changed_when: false

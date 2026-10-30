@@ -51,3 +51,16 @@ Playbook servidor_web v1.0.0
 
 El separar claramente funcionalidades en colecciones implica que cada colección tenga su propio ciclo de vida, su propio versionado y su propia documentación. Y que cuando algo cambie, impacte solamente a los que relamnete usan esa funcionalidad...
 No a mi, que estoy instalando paquetes.. no mandando correos.
+
+---
+
+1. Meter un par de pruebas asincronas:
+ - proceso
+ - getent (dns)
+Y que de igual cual falle, que ambas se ejecuten y reporten.
+
+2. Jugar con el 
+   serial: 1
+   max_fail_percentage: 50
+
+El lunes, subo a github eso hecho.
